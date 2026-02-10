@@ -1,0 +1,88 @@
+@import "tailwindcss";
+
+/* Font Awesome Variables */
+:root {
+  --fa-style-family-classic: "Font Awesome 6 Free";
+  --fa-font-solid: normal 900 1em / 1 "Font Awesome 6 Free";
+  --fa-font-regular: normal 400 1em / 1 "Font Awesome 6 Free";
+  --fa-style-family-brands: "Font Awesome 6 Brands";
+  --fa-font-brands: normal 400 1em / 1 "Font Awesome 6 Brands";
+}
+
+/* Base Styles */
+:root {
+  font-family: 'Montserrat', sans-serif;
+  line-height: 1.6;
+  font-weight: 300;
+  
+  color-scheme: light;
+  color: #1a1a1a;
+  background-color: white;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  font-family: 'Montserrat', sans-serif;
+  line-height: 1.6;
+  background: white;
+  color: #1a1a1a;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+/* Links - Gold color */
+a {
+  font-weight: 500;
+  color: #b8860b;
+  text-decoration: inherit;
+  transition: color 0.25s;
+}
+
+a:hover {
+  color: #8b6914;
+}
+
+/* Headings */
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #1a1a1a;
+}
+
+h1 {
+  font-size: 2.5em;
+}
+
+h2 {
+  font-size: 2em;
+}
+
+h3 {
+  font-size: 1.5em;
+}
+
+/* Buttons - Override defaults */
+button {
+  font-family: 'Montserrat', sans-serif;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.25s;
+}
+
+/* Remove Vite dark mode styles */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color: #1a1a1a;
+    background-color: white;
+  }
+}
