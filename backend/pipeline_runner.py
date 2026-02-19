@@ -29,6 +29,13 @@ except ImportError as e:
     sys.exit(1)
 
 
+def _parse_keywords_override() -> list[str]:
+    raw = os.getenv("KEYWORDS_OVERRIDE", "").strip()
+    if not raw:
+        return []
+    return [k.strip().lower() for k in raw.split(",") if k.strip()]
+
+
 class PipelineRunner:
     """
     Main pipeline orchestrator
@@ -45,6 +52,12 @@ class PipelineRunner:
         # Initialize your agents
         print("🤖 Initializing Article Collector...")
         self.collector = CustomArticleCollector()
+
+        
+        override_keywords = _parse_keywords_override()
+        if override_keywords:
+            self.collector.set_keywords_override(override_keywords)
+            print(f"Using keyword override ({len(override_keywords)} keywords)")
         
         print("🤖 Initializing Article Summarizer...")
         self.summarizer = ArticleSummarizer()
