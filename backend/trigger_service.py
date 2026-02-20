@@ -75,6 +75,24 @@ def _gh_headers() -> dict:
     }
 
 
+def _gh_request(method: str, url: str, **kwargs):
+    last_exc = None
+    for attempt in range(3):
+        try:
+            r = requests.request(method, url, headers=_gh_headers(), timeout=20, **kwargs)
+            if r.status_code >= 500 and attempt < 2:
+                time.sleep(1.5 * (attempt + 1))
+                continue
+            return r
+        except requests.RequestException as exc:
+            last_exc = exc
+            if attempt < 2:
+                time.sleep(1.5 * (attempt + 1))
+                continue
+            raise HTTPException(status_code=502, detail=f"GitHub request failed: {exc}") from exc
+    raise HTTPException(status_code=502, detail=f"GitHub request failed: {last_exc}")
+
+
 def _ensure_state_file() -> None:
     STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
     if not STATE_FILE.exists():
@@ -106,7 +124,7 @@ def _write_state(state: dict) -> None:
 
 def _get_latest_run() -> Optional[dict]:
     url = f"{GITHUB_API_BASE}/actions/workflows/{GITHUB_WORKFLOW}/runs?per_page=1"
-    r = requests.get(url, headers=_gh_headers(), timeout=20)
+    r = _gh_request("GET", url)
     if r.status_code != 200:
         raise HTTPException(status_code=502, detail=f"GitHub status failed: {r.status_code}")
     runs = r.json().get("workflow_runs", [])
@@ -184,7 +202,7 @@ def trigger_pipeline(req: TriggerRequest, response: Response, authorization: str
         }
 
 
-        r = requests.post(url, json=body, headers=_gh_headers(), timeout=20)
+        r = _gh_request("POST", url, json=body)
         if r.status_code != 204:
             state["status"] = "failed"
             state["last_error"] = f"GitHub dispatch failed: {r.status_code} {r.text}"
@@ -232,7 +250,7 @@ def latest_artifact(authorization: str = Header(default="")):
     _check_auth(authorization)
 
     runs_url = f"{GITHUB_API_BASE}/actions/workflows/{GITHUB_WORKFLOW}/runs?per_page=10"
-    rr = requests.get(runs_url, headers=_gh_headers(), timeout=20)
+    rr = _gh_request("GET", runs_url)
     if rr.status_code != 200:
         raise HTTPException(status_code=502, detail=f"GitHub runs failed: {rr.status_code}")
 
@@ -242,7 +260,7 @@ def latest_artifact(authorization: str = Header(default="")):
         return {"downloadURL": None}
 
     artifacts_url = f"{GITHUB_API_BASE}/actions/runs/{successful['id']}/artifacts"
-    ar = requests.get(artifacts_url, headers=_gh_headers(), timeout=20)
+    ar = _gh_request("GET", artifacts_url)
     if ar.status_code != 200:
         raise HTTPException(status_code=502, detail=f"GitHub artifacts failed: {ar.status_code}")
 
@@ -259,4 +277,20 @@ def latest_artifact(authorization: str = Header(default="")):
         "name": artifact.get("name"),
         "createdAt": artifact.get("created_at"),
         "runNumber": successful.get("run_number"),
+    }
+
+
+@app.get("/pipeline/latest-result")
+def latest_result(authorization: str = Header(default="")):
+    _check_auth(authorization)
+
+    status = pipeline_status(authorization=authorization)
+    artifact = latest_artifact(authorization=authorization)
+
+    return {
+        "status": status.get("status"),
+        "conclusion": status.get("conclusion"),
+        "runId": status.get("runId"),
+        "updatedAt": status.get("updatedAt"),
+        "artifact": artifact,
     }
