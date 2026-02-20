@@ -1,0 +1,34 @@
+#core dependencies
+fastapi
+pydantic
+uvicorn
+
+# Web scraping and article extraction
+requests==2.31.0
+beautifulsoup4==4.12.2
+newspaper3k==0.2.8
+feedparser==6.0.10
+lxml==4.9.3
+
+# Google API integration
+gspread==5.12.0
+google-auth==2.23.4
+google-auth-oauthlib==1.1.0
+google-auth-httplib2==0.1.1
+google-api-python-client==2.108.0
+
+# NLP and Summarization
+transformers==4.35.2
+torch==2.1.1
+sentencepiece==0.1.99
+numpy<2
+
+# PDF Generation
+reportlab==4.0.7
+
+# Utilities
+python-dateutil==2.8.2
+
+# Anti-blocking (optional but recommended)
+cloudscraper==1.2.71
+curl-cffi>=0.5.0
