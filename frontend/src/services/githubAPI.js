@@ -3,35 +3,77 @@
  */
 
 const PIPELINE_API_BASE = import.meta.env.VITE_PIPELINE_API_BASE || "http://localhost:8000";
-const PIPELINE_API_TOKEN = import.meta.env.VITE_PIPELINE_API_TOKEN;
+const TOKEN_KEY = "access_token";
 
 class PipelineService {
+  getToken() {
+    return sessionStorage.getItem(TOKEN_KEY);
+  }
+
+  setToken(token) {
+    sessionStorage.setItem(TOKEN_KEY, token);
+  }
+
+  clearToken() {
+    sessionStorage.removeItem(TOKEN_KEY);
+  }
+
   getHeaders() {
     const headers = {
-      "Content-Type": "application/json",
       "Accept": "application/json"
     };
 
-    if (PIPELINE_API_TOKEN) {
-      headers["Authorization"] = `Bearer ${PIPELINE_API_TOKEN}`;
+    const token = this.getToken();
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
     }
 
     return headers;
   }
 
-  async triggerPipeline(payload = {}) {
-    if (!PIPELINE_API_TOKEN) {
-      return { success: false, error: "Missing pipeline API token" };
-    }
+  async login(password) {
+    try {
+      const res = await fetch(`${PIPELINE_API_BASE}/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        body: JSON.stringify({ password })
+      });
 
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return { success: false, error: data.detail || `HTTP ${res.status}` };
+      }
+
+      this.setToken(data.access_token);
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  }
+
+  handleUnauthorized() {
+    this.clearToken();
+    window.dispatchEvent(new Event("auth:expired"));
+  }
+
+  async triggerPipeline(payload = {}) {
     try {
       const res = await fetch(`${PIPELINE_API_BASE}/pipeline/trigger`, {
         method: "POST",
-        headers: this.getHeaders(),
+        headers: {
+          ...this.getHeaders(),
+          "Content-Type": "application/json"
+        },
         body: JSON.stringify(payload)
       });
 
       const data = await res.json().catch(() => ({}));
+      if (res.status === 401) {
+        this.handleUnauthorized();
+      }
 
       if (!res.ok) {
         return { success: false, error: data.detail || data.error || `HTTP ${res.status}` };
@@ -50,6 +92,9 @@ class PipelineService {
         headers: this.getHeaders()
       });
 
+      if (res.status === 401) {
+        this.handleUnauthorized();
+      }
       if (!res.ok) return null;
       return await res.json();
     } catch (error) {
@@ -71,6 +116,9 @@ class PipelineService {
         headers: this.getHeaders()
       });
 
+      if (res.status === 401) {
+        this.handleUnauthorized();
+      }
       if (!res.ok) return null;
       const data = await res.json();
 

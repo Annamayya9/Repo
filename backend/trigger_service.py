@@ -6,8 +6,10 @@ from pathlib import Path
 from typing import List, Optional
 from fastapi.middleware.cors import CORSMiddleware
 import requests
+import jwt
 from fastapi import FastAPI, Header, HTTPException, Response
 from pydantic import BaseModel, Field
+from jwt import ExpiredSignatureError, PyJWTError
 
 app = FastAPI()
 
@@ -31,6 +33,10 @@ GITHUB_WORKFLOW = os.environ.get("GITHUB_WORKFLOW", "collect-articles.yml")
 GITHUB_REF = os.environ.get("GITHUB_REF", "main")
 GITHUB_TOKEN = os.environ["GITHUB_TOKEN"]
 TRIGGER_API_TOKEN = os.environ["TRIGGER_API_TOKEN"]
+APP_LOGIN_PASSWORD = os.environ["APP_LOGIN_PASSWORD"]
+JWT_SECRET = os.environ["JWT_SECRET"]
+JWT_EXPIRES_SECONDS = int(os.environ.get("JWT_EXPIRES_SECONDS", "1800"))
+JWT_ALG = "HS256"
 
 COOLDOWN_SECONDS = int(os.environ.get("PIPELINE_COOLDOWN_SECONDS", "1800"))
 STATE_FILE = Path(os.environ.get("PIPELINE_STATE_FILE", "backend/data/pipeline_state.json"))
@@ -44,10 +50,42 @@ class TriggerRequest(BaseModel):
     keywords: Optional[List[str]] = Field(default=None, min_length=5, max_length=25)
 
 
+class LoginRequest(BaseModel):
+    password: str
+
+
+def _issue_jwt() -> str:
+    now = int(time.time())
+    payload = {
+        "sub": "dashboard-user",
+        "iat": now,
+        "exp": now + JWT_EXPIRES_SECONDS,
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALG)
+
+
 def _check_auth(authorization: str) -> None:
-    if authorization != f"Bearer {TRIGGER_API_TOKEN}":
+    if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Unauthorized")
-    
+    token = authorization.split(" ", 1)[1].strip()
+    try:
+        jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALG])
+    except ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except PyJWTError:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+
+@app.post("/auth/login")
+def auth_login(req: LoginRequest):
+    if req.password != APP_LOGIN_PASSWORD:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    return {
+        "access_token": _issue_jwt(),
+        "token_type": "bearer",
+        "expires_in": JWT_EXPIRES_SECONDS,
+    }
+
 
 def _normalize_keywords(raw: Optional[List[str]]) -> List[str]:
     if not raw:
