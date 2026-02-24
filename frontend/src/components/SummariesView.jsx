@@ -3,7 +3,6 @@ import { AlertCircle, Clock } from "lucide-react";
 import LoadingScreen from "./LoadingScreen";
 import ArticlesList from "./ArticlesList";
 import googleSheetsAPI from "../services/googleSheetsAPI";
-import githubAPI from "../services/githubAPI";
 import rateLimitService from "../services/rateLimitService";
 import usePipelineRunner from "../hooks/usePipelineRunner";
 import RunActions from "./pipeline/RunActions";
@@ -162,15 +161,15 @@ const handleRunPipeline = async () => {
 
   const handleDownloadPDF = async () => {
     try {
-      const artifactInfo = await githubAPI.getLatestArtifactDownloadURL();
-      if (!artifactInfo || !artifactInfo.downloadURL) {
+      const pdfInfo = await googleSheetsAPI.getLatestPDFLink();
+      if (!pdfInfo || (!pdfInfo.viewLink && !pdfInfo.downloadLink)) {
         alert("No PDF available yet. Run the pipeline first to generate a PDF.");
         return;
       }
-      window.open(artifactInfo.downloadURL, "_blank");
+      window.open(pdfInfo.viewLink || pdfInfo.downloadLink, "_blank");
     } catch (error) {
       console.error("Error downloading PDF:", error);
-      alert("Failed to fetch latest PDF link.");
+      alert("Failed to fetch latest PDF link from Google Sheets metadata.");
     }
   };
 
