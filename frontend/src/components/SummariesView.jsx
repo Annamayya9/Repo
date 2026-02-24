@@ -13,6 +13,7 @@ import logo from "../assets/ca-circle.png";
 
 function SummariesView() {
   const [viewStatus, setViewStatus] = useState("idle"); // idle|running|complete
+  const [isViewingResults, setIsViewingResults] = useState(false);
   const [articles, setArticles] = useState([]);
   const [lastRunTime, setLastRunTime] = useState(null);
   const [pdfLink, setPdfLink] = useState(null);
@@ -151,8 +152,12 @@ const handleRunPipeline = async () => {
       "Load latest results from Google Sheets?\n\nThis will display all articles currently in the database."
     );
     if (!checking) return;
-    setViewStatus("running");
-    await loadResultsAfterPipeline();
+    setIsViewingResults(true);
+    try {
+      await loadResultsAfterPipeline();
+    } finally {
+      setIsViewingResults(false);
+    }
   };
 
   const handleDownloadPDF = async () => {
@@ -227,6 +232,8 @@ const handleRunPipeline = async () => {
           hasPDF={!!pdfLink}
           runDisabled={rateLimitInfo && !rateLimitInfo.canRun}
           runDisabledReason={rateLimitInfo?.reason}
+          viewResultsDisabled={isViewingResults}
+          viewResultsLabel={isViewingResults ? "Loading Results..." : "View Results"}
         />
 
         {rateLimitInfo && !rateLimitInfo.canRun && (
@@ -258,4 +265,3 @@ const handleRunPipeline = async () => {
 }
 
 export default SummariesView;
-

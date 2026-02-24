@@ -9,6 +9,8 @@ export default function RunActions({
   hasPDF,
   runDisabled,
   runDisabledReason,
+  viewResultsDisabled = false,
+  viewResultsLabel = "View Results",
 }) {
   const keywordCount = keywordsInput
     .split(",")
@@ -61,10 +63,11 @@ export default function RunActions({
 
         <button
           onClick={onViewResults}
-          className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-3 bg-white text-[#b8860b] font-semibold rounded-lg border-2 border-[#b8860b] hover:bg-[#faf8f3] transition-all shadow-md hover:shadow-lg"
+          disabled={viewResultsDisabled}
+          className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-3 bg-white text-[#b8860b] font-semibold rounded-lg border-2 border-[#b8860b] hover:bg-[#faf8f3] transition-all shadow-md hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
         >
           <FileText className="w-5 h-5" />
-          <span>View Results</span>
+          <span>{viewResultsLabel}</span>
         </button>
 
         {hasPDF && (
