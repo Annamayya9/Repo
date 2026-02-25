@@ -85,7 +85,8 @@ export default function usePipelineRunner({ onSuccess, onFailure }) {
     }
     setErrorMessage(null);
 
-    const result = await githubAPI.triggerPipeline({ keywords });
+    const payload = keywords.length > 0 ? { keywords } : {};
+    const result = await githubAPI.triggerPipeline(payload);
     if (!result.success) {
       setRunStatus("idle");
       setErrorMessage(result.error || "Failed to trigger pipeline.");

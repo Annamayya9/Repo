@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import requests
 import jwt
 from fastapi import FastAPI, Header, HTTPException, Response
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from jwt import ExpiredSignatureError, PyJWTError
 
 app = FastAPI()
@@ -47,7 +47,7 @@ STATE_LOCK = threading.Lock()
 
 
 class TriggerRequest(BaseModel):
-    keywords: Optional[List[str]] = Field(default=None, min_length=5, max_length=25)
+    keywords: Optional[List[str]] = None
 
 
 class LoginRequest(BaseModel):
