@@ -147,10 +147,6 @@ const handleRunPipeline = async () => {
 
 
   const handleViewResults = async () => {
-    const checking = window.confirm(
-      "Load latest results from Google Sheets?\n\nThis will display all articles currently in the database."
-    );
-    if (!checking) return;
     setIsViewingResults(true);
     try {
       await loadResultsAfterPipeline();
