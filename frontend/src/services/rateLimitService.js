@@ -136,6 +136,9 @@ class RateLimitService {
     }
 
     if (!check.timeRemainingMs) {
+      if (check.reason === 'Pipeline is currently running') {
+        return 'Running...';
+      }
       return 'Calculating...';
     }
 
@@ -162,6 +165,34 @@ class RateLimitService {
       });
       console.log('Manually cleared running state');
     }
+  }
+
+  /**
+   * Sync local rate-limit state from backend /pipeline/status response
+   */
+  syncFromBackendStatus(backendStatus) {
+    if (!backendStatus) return;
+
+    const status = backendStatus.status;
+    const lastTriggeredAtSec = backendStatus.lastTriggeredAt;
+    const lastTriggeredAtMs = lastTriggeredAtSec ? Number(lastTriggeredAtSec) * 1000 : null;
+
+    if (status === 'queued' || status === 'running' || status === 'in_progress') {
+      this.saveState({
+        lastRunStart: lastTriggeredAtMs || Date.now(),
+        isRunning: true,
+        lastRunComplete: null
+      });
+      return;
+    }
+
+    // For completed/idle states, force-clear stale running flag
+    const current = this.getState() || {};
+    this.saveState({
+      lastRunStart: lastTriggeredAtMs || current.lastRunStart || Date.now(),
+      isRunning: false,
+      lastRunComplete: Date.now()
+    });
   }
 
   /**

@@ -3,6 +3,7 @@ import { AlertCircle, Clock } from "lucide-react";
 import LoadingScreen from "./LoadingScreen";
 import ArticlesList from "./ArticlesList";
 import googleSheetsAPI from "../services/googleSheetsAPI";
+import githubAPI from "../services/githubAPI";
 import rateLimitService from "../services/rateLimitService";
 import usePipelineRunner from "../hooks/usePipelineRunner";
 import RunActions from "./pipeline/RunActions";
@@ -21,6 +22,19 @@ function SummariesView() {
   const updateRateLimitInfo = () => {
     const info = rateLimitService.canRunPipeline();
     setRateLimitInfo(info);
+  };
+
+  const syncRateLimitFromBackend = async () => {
+    try {
+      const status = await githubAPI.getLatestRunStatus();
+      if (status) {
+        rateLimitService.syncFromBackendStatus(status);
+      }
+    } catch (error) {
+      console.error("Error syncing cooldown from backend:", error);
+    } finally {
+      updateRateLimitInfo();
+    }
   };
 
   const loadLastRunDate = async () => {
@@ -105,11 +119,11 @@ function SummariesView() {
   useEffect(() => {
     checkForPDF();
     loadLastRunDate();
-    updateRateLimitInfo();
+    syncRateLimitFromBackend();
   }, []);
 
   useEffect(() => {
-    const interval = setInterval(updateRateLimitInfo, 5000);
+    const interval = setInterval(syncRateLimitFromBackend, 10000);
     return () => clearInterval(interval);
   }, []);
 
