@@ -171,15 +171,15 @@ const handleRunPipeline = async () => {
 
   const handleDownloadPDF = async () => {
     try {
-      const pdfInfo = await googleSheetsAPI.getLatestPDFLink();
-      if (!pdfInfo || (!pdfInfo.viewLink && !pdfInfo.downloadLink)) {
+      const artifactInfo = await githubAPI.getLatestArtifactDownloadURL();
+      if (!artifactInfo || !artifactInfo.downloadURL) {
         alert("No PDF available yet. Run the pipeline first to generate a PDF.");
         return;
       }
-      window.open(pdfInfo.viewLink || pdfInfo.downloadLink, "_blank");
+      window.open(artifactInfo.downloadURL, "_blank");
     } catch (error) {
       console.error("Error downloading PDF:", error);
-      alert("Failed to fetch latest PDF link from Google Sheets metadata.");
+      alert("Failed to fetch latest PDF link.");
     }
   };
 
