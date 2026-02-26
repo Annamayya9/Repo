@@ -130,6 +130,39 @@ class PipelineService {
     }
   }
 
+  async downloadLatestArtifactZip() {
+    const res = await fetch(`${PIPELINE_API_BASE}/pipeline/download-latest-artifact`, {
+      method: "GET",
+      headers: this.getHeaders()
+    });
+
+    if (res.status === 401) {
+      this.handleUnauthorized();
+      return { success: false, error: "Unauthorized" };
+    }
+
+    if (res.status === 404) {
+      return { success: false, error: "No PDF available yet. Run the pipeline first to generate a PDF." };
+    }
+
+    if (!res.ok) {
+      let message = `HTTP ${res.status}`;
+      try {
+        const data = await res.json();
+        message = data.detail || message;
+      } catch (_e) {
+        // no-op
+      }
+      return { success: false, error: message };
+    }
+
+    const blob = await res.blob();
+    const contentDisposition = res.headers.get("content-disposition") || "";
+    const match = contentDisposition.match(/filename="([^"]+)"/i);
+    const filename = match?.[1] || "latest-artifact.zip";
+    return { success: true, blob, filename };
+  }
+
   // Backward compatibility if anything else still calls this
   async getWorkflowRuns() {
     return [];

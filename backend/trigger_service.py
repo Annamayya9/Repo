@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import requests
 import jwt
 from fastapi import FastAPI, Header, HTTPException, Response
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from jwt import ExpiredSignatureError, PyJWTError
 
@@ -319,6 +320,59 @@ def latest_artifact(authorization: str = Header(default="")):
         "createdAt": artifact.get("created_at"),
         "runNumber": successful.get("run_number"),
     }
+
+
+@app.get("/pipeline/download-latest-artifact")
+def download_latest_artifact(authorization: str = Header(default="")):
+    _check_auth(authorization)
+
+    runs_url = f"{GITHUB_API_BASE}/actions/workflows/{GITHUB_WORKFLOW}/runs?per_page=10"
+    rr = _gh_request("GET", runs_url)
+    if rr.status_code != 200:
+        raise HTTPException(status_code=502, detail=f"GitHub runs failed: {rr.status_code}")
+
+    runs = rr.json().get("workflow_runs", [])
+    successful = next((r for r in runs if r.get("conclusion") == "success"), None)
+    if not successful:
+        raise HTTPException(status_code=404, detail="No successful workflow run found")
+
+    artifacts_url = f"{GITHUB_API_BASE}/actions/runs/{successful['id']}/artifacts"
+    ar = _gh_request("GET", artifacts_url)
+    if ar.status_code != 200:
+        raise HTTPException(status_code=502, detail=f"GitHub artifacts failed: {ar.status_code}")
+
+    artifacts = ar.json().get("artifacts", [])
+    artifact = next(
+        (a for a in artifacts if str(a.get("name", "")).startswith("Reading-Roundup-")),
+        None,
+    )
+    if not artifact:
+        raise HTTPException(status_code=404, detail="No matching artifact found")
+
+    download_url = artifact.get("archive_download_url")
+    if not download_url:
+        raise HTTPException(status_code=404, detail="Artifact download URL unavailable")
+
+    try:
+        gh_resp = requests.get(download_url, headers=_gh_headers(), stream=True, timeout=60)
+    except requests.RequestException as exc:
+        raise HTTPException(status_code=502, detail=f"Artifact download failed: {exc}") from exc
+
+    if gh_resp.status_code != 200:
+        detail = None
+        try:
+            detail = gh_resp.json()
+        except ValueError:
+            detail = gh_resp.text
+        raise HTTPException(status_code=502, detail=f"Artifact download failed: {gh_resp.status_code} {detail}")
+
+    artifact_name = artifact.get("name") or "latest-artifact"
+    file_name = f"{artifact_name}.zip"
+    return StreamingResponse(
+        gh_resp.iter_content(chunk_size=1024 * 64),
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{file_name}"'},
+    )
 
 
 @app.get("/pipeline/latest-result")

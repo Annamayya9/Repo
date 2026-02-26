@@ -171,15 +171,23 @@ const handleRunPipeline = async () => {
 
   const handleDownloadPDF = async () => {
     try {
-      const artifactInfo = await githubAPI.getLatestArtifactDownloadURL();
-      if (!artifactInfo || !artifactInfo.downloadURL) {
-        alert("No PDF available yet. Run the pipeline first to generate a PDF.");
+      const result = await githubAPI.downloadLatestArtifactZip();
+      if (!result.success) {
+        alert(result.error || "No PDF available yet. Run the pipeline first to generate a PDF.");
         return;
       }
-      window.open(artifactInfo.downloadURL, "_blank");
+
+      const url = window.URL.createObjectURL(result.blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = result.filename || "latest-artifact.zip";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Error downloading PDF:", error);
-      alert("Failed to fetch latest PDF link.");
+      alert("Failed to download latest PDF.");
     }
   };
 
